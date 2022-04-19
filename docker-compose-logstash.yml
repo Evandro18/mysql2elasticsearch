@@ -1,0 +1,54 @@
+version: '3.7'
+
+services:
+  elasticsearch:
+    image: elasticsearch:7.2.0
+    ports:
+      - '9200:9200'
+    environment:
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
+  kibana:
+    image: kibana:7.2.0
+    ports:
+      - '5601:5601'
+
+  logstash:
+    build: 
+      context: .
+      dockerfile: logstash.Dockerfile
+    ports:
+      - 9600:9600
+      - 5044:5044
+    environment:
+      LS_JAVA_OPTS: -Xmx256m -Xms256m
+    volumes:
+      - type: bind
+        source: ./logstash-pipes/
+        target: /usr/share/logstash/pipeline/
+        read_only: true
+    depends_on:
+      - mysql
+      - elasticsearch
+      - kibana
+  mysql:
+    image: mysql
+    restart: always
+    cap_add:
+      - SYS_NICE  # CAP_SYS_NICE
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: infraDB
+    ports:
+      - "3307:3306"
+    volumes:
+      - database:/var/lib/mysql
+volumes:
+  database:
+  esdata:
